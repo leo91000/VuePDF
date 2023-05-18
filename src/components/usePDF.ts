@@ -1,12 +1,11 @@
 import { shallowRef } from 'vue'
 import type { PDFDocumentLoadingTask } from 'pdfjs-dist'
 import * as PDFJSLib from 'pdfjs-dist/build/pdf'
-import PDFWorker from 'pdfjs-dist/build/pdf.worker.js?url'
 import type { OnPasswordCallback, UsePDFInfo, UsePDFOptions } from './types'
 
 // Could not find a way to make this work with vite, importing the worker entry bundle the whole worker to the the final output
 // https://erindoyle.dev/using-pdfjs-with-vite/
-PDFJSLib.GlobalWorkerOptions.workerSrc = PDFWorker
+PDFJSLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJSLib.version}/pdf.worker.js`
 
 /**
  * @typedef {Object} UsePDFParameters
@@ -36,6 +35,7 @@ export function usePDF(src: string, options: UsePDFOptions = {
   const pdf = shallowRef<PDFDocumentLoadingTask>()
   const pages = shallowRef(0)
   const info = shallowRef<UsePDFInfo | {}>({})
+  const loading = shallowRef(true)
 
   const loadingTask = PDFJSLib.getDocument(src)
   if (options.onProgress)
@@ -51,28 +51,33 @@ export function usePDF(src: string, options: UsePDFOptions = {
     loadingTask.onPassword = onPassword
   }
 
-  loadingTask.promise.then(async (doc) => {
-    pdf.value = doc.loadingTask
-    pages.value = doc.numPages
+  loadingTask.promise
+    .then(async (doc) => {
+      pdf.value = doc.loadingTask
+      pages.value = doc.numPages
 
-    const metadata = await doc.getMetadata()
-    const attachments = (await doc.getAttachments()) as Record<string, unknown>
-    const javascript = await doc.getJavaScript()
+      const metadata = await doc.getMetadata()
+      const attachments = (await doc.getAttachments()) as Record<string, unknown>
+      const javascript = await doc.getJavaScript()
 
-    info.value = {
-      metadata,
-      attachments,
-      javascript,
-    }
-  }, (error) => {
-    // PDF loading error
-    if (typeof options.onError === 'function')
-      options.onError(error)
-  })
+      info.value = {
+        metadata,
+        attachments,
+        javascript,
+      }
+    })
+    .catch((error) => {
+      if (typeof options.onError === 'function')
+        options.onError(error)
+    })
+    .finally(() => {
+      loading.value = false
+    })
 
   return {
     pdf,
     pages,
     info,
+    loading,
   }
 }

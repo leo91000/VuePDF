@@ -265,7 +265,7 @@ defineExpose({
     <div v-show="annotationLayer" ref="AnnotationlayerREF" class="annotationLayer" style="display: block;" />
     <div v-show="textLayer" ref="TextlayerREF" class="textLayer" style="display: block;" />
     <div v-show="loadingLayer" ref="LoadlayerREF" style="display: block; position: absolute;">
-      <slot />
+      <slot name="loading" />
     </div>
   </span>
 </template>
